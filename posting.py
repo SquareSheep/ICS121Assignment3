@@ -4,4 +4,4 @@ class Posting:
 		self.frequency = frequency
 
 	def __repr__(self):
-		return str(self.docID) + ":" + str(self.frequency)
+		return str(self.docID) + " " + str(self.frequency)

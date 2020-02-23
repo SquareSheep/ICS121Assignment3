@@ -1,15 +1,19 @@
-import re
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+import nltk
 import io
 import os
 import json
 from posting import Posting
 
-rootFolderName = "DEV"
-docIDFileName = "docIDs.txt"
-wantedTags = {"p","span","blockquote","code","br","a","ol","ins","sub","sup","h1","h2","h3","h4","h5","h6","li","ul","title","b","strong","em","i","small","sub","sup","ins","del","mark","pre"}
+rootFolderName = "../DEV"
+docIDFileName = "../docIDs.txt"
+partialIndexFileName = "../index/partialIndex"
+realIndexFileName = "../index/realIndex"
 
+stemmer = nltk.stem.PorterStemmer()
+
+uniqueTokens = {}
 
 def tokenizeText(text):
 	'''Returns list of tokens given a string of text'''
@@ -24,7 +28,8 @@ def tokenizeText(text):
 				currWord += char
 			else:
 				if currWord != "":
-					tokens.append(currWord)
+					# print(currWord, stemmer.stem(currWord))
+					tokens.append(stemmer.stem(currWord))
 					currWord = ""
 		except:
 			continue
@@ -45,10 +50,6 @@ def parseHTML(html):
 		pageTextString += text + " "
 
 	return pageTextString
-
-
-def stem(word):
-	pass
 
 
 def createDocIDMapping(subdirs):
@@ -85,14 +86,33 @@ def getPageTextString(filename):
 		return parseHTML(d["content"])
 
 
+def writeIndexToFile(index, filename):
+	indexFile = open(filename,"w")
+	for word, postings in index.items():
+		tempStr = word
+		for posting in postings:
+			tempStr += "|" + str(posting[0]) + " " + str(posting[1])
+		tempStr += "\n"
+		indexFile.write(tempStr)
+
+
+def mergeIndexes(numofindexes):
+	partialIndexes = []
+	for i in range(0,numofindexes):
+		partialIndexes[i] = open(partialIndexFileName + str(i) + ".txt","r")
+
+	# for token in sorted(uniqueTokens):
+	# 	for partialIndex in partialIndexes:
+	# 		if token in partialIndex:
+
 # Part 1 of assignment
 # Creating the inverted index and docID mapping
 if __name__ == '__main__':
+
 	# Step 1: Map all the documents to integers
 		# Put this mapping in a file
 	subdirs = os.listdir(rootFolderName)
 	# createDocIDMapping(subdirs)
-
 	docIDMapping = getDocIDMapping()
 
 	# Step 2: For each subdirectory:
@@ -100,10 +120,9 @@ if __name__ == '__main__':
 		# Create a partial index for every X files
 
 	partialIndexNum = 0
-	filesPerIndex = 10;
-	numofFiles = 0;
- 
-	# Key: Token Value: List of postings
+	numofFiles = 0
+	numofPostings = 0
+	stop = False
 	partialIndex = {}
 
 	for subdir in subdirs:
@@ -112,7 +131,8 @@ if __name__ == '__main__':
 		for filename in os.listdir(subdirectoryName):
 			filename = subdirectoryName+"/"+ filename
 
-			print("____________________________________FILE NAME: " + filename)
+			numofFiles += 1
+			print(str(numofPostings)+" " + str(numofFiles) + "____________________________________FILE NAME: " + filename)
 
 			pageTextString = getPageTextString(filename)
 
@@ -122,24 +142,37 @@ if __name__ == '__main__':
 					tokens[token] = 1
 				else:
 					tokens[token] += 1
-			print(tokens)
+
+				if token not in uniqueTokens:
+					uniqueTokens[token] = 1
+				else:
+					uniqueTokens[token] += 1
 
 			for token in tokens:
 				if token not in partialIndex:
 					partialIndex[token] = []
-				partialIndex[token].append(Posting(docIDMapping[filename],tokens[token]))
+				partialIndex[token].append((docIDMapping[filename],tokens[token]))
+				numofPostings += 1
 
-		numofFiles += 1
-		if numofFiles == filesPerIndex:
-			# Write to partial index
-			numofFiles = 0
-			partialIndexNum += 1
-			
-		print("PARTIAL INDEX__________________________________________")
-		print(partialIndex)
+			if numofPostings >= 5000000:
+				writeIndexToFile(partialIndex, partialIndexFileName + str(partialIndexNum) + ".txt")
+				numofPostings = 0
+				partialIndexNum += 1
+				partialIndex = {}
+				# stop = True
+				# break
+		if stop:
+			break
+	print("________________________DONE_________________________")
+	print("uniqueTokens:"+str(len(uniqueTokens)))
+	print("numofFiles:"+str(numofFiles))
 
-		break # REMOVE THIS
-			
+	i = 0
+	for token in sorted(uniqueTokens,key = lambda x: -uniqueTokens[x]):
+		print(token,uniqueTokens[token])
+		i += 1
+		if i == 100:
+			break
 
 	# Step 3: Merge the partial indexes
-		# Index should be split into files, sorted alphabetically
+	# mergeIndexes(partialIndexNum)
