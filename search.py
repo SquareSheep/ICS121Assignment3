@@ -84,7 +84,7 @@ if __name__ == '__main__':
 		print("Top 10 results:")
 		i = 0
 		for doc in sorted(docScores, key = lambda x : -docScores[x]):
-			print(docIDMapping[int(doc)][7:] + " " + str(docScores[doc]))
+			print(docIDMapping[int(doc)] + " " + str(docScores[doc]))
 			i += 1
 			if i == 10:
 				break

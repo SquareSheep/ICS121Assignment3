@@ -86,6 +86,18 @@ def createDocIDMapping(subdirs):
 	docIDFile.close()
 
 
+def createIDURLMapping(subdirs):
+	docIDFile = open(docIDFileName,"w")
+	for subdir in subdirs:
+		for filename in os.listdir(rootFolderName+"/"+subdir):
+			print(filename)
+			js = open(rootFolderName+"/"+subdir+"/"+filename)
+			di = json.load(js)
+			docIDFile.write(di["url"]+"\n")
+			js.close()
+	docIDFile.close()
+
+
 def writePartialIndexToFile(index, filename):
 	indexFile = open(filename + ".txt","w")
 	indexOffsetFile = open(filename+"offset.txt","w")
@@ -149,8 +161,10 @@ def mergeIndexes(numofindexes, uniqueTokens):
 #-------------------------------------------------
 
 if __name__ == '__main__':
-	# subdirs = os.listdir(rootFolderName)
-	# createDocIDMapping(subdirs)
+
+	subdirs = os.listdir(rootFolderName)
+	#createDocIDMapping(subdirs)
+	createIDURLMapping(subdirs)
 	# docIDMapping = getDocIDMapping()
 
 	# Step 2: For each subdirectory:
@@ -219,7 +233,7 @@ if __name__ == '__main__':
 	# Step 3: Merge the partial indexes
 	mergeIndexes(partialIndexNum, uniqueTokens)
 	"""
-
+	"""
 	index = open("../index/finalIndex.txt","r")
 
 	indexNumber = 0
@@ -253,3 +267,4 @@ if __name__ == '__main__':
 		offset += len(tokenAndPostings)+1
 
 		finalIndex.write(tokenAndPostings)
+	"""
