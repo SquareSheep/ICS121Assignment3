@@ -1,14 +1,26 @@
 import io
+from simhash import Simhash
 from indexer import tokenizeText
-from indexer import docIDFileName
+from indexer import docIDMappingFilePath
 
+"""
+TODO:
+
+Simhash--DONE
+
+Important text score multiplier (Bold, heading, etc)
+
+Page rank
+
+Cosine ranking
+- Only consider documents with scores above a certain threshold
+
+"""
 
 def getPostings(token, tokenLocations):
-	print(token)
 	if token in tokenLocations:
 		file = open("../finalIndex/index" + str(tokenLocations[token][0]) + ".txt")
 		file.seek(int(tokenLocations[token][1]))
-		print(file)
 		line = file.readline()
 		postings = {}
 		for posting in line.split(":")[1].split("|")[0:-1]:
@@ -26,16 +38,16 @@ def getTokenLocations():
 	return locations
 
 
-def getIDDocMapping():
-	docIDFile = open(docIDFileName,"r")
+def getDocIDMapping():
+	docIDFile = open(docIDMappingFilePath+".txt","r")
 	docIDMapping = {}
 
-	filename = (docIDFile.readline()).rstrip()
+	fileName = (docIDFile.readline()).rstrip()
 
 	currID = 0
-	while filename:
-		docIDMapping[currID] = filename
-		filename = (docIDFile.readline()).rstrip()
+	while fileName:
+		docIDMapping[currID] = fileName
+		fileName = (docIDFile.readline()).rstrip()
 		currID += 1
 
 	docIDFile.close()
@@ -44,7 +56,7 @@ def getIDDocMapping():
 
 
 if __name__ == '__main__':
-	docIDMapping = getIDDocMapping()
+	docIDMapping = getDocIDMapping()
 	tokenLocations = getTokenLocations()
 
 	print("___________Assignment 3 Search Engine_____________")
@@ -53,10 +65,10 @@ if __name__ == '__main__':
 		query = query.lower()
 		if query == "" or query == "q":
 			break
-		print("query: " + query)
+		# print("query: " + query)
 
 		tokens = tokenizeText(query)
-		print("tokens: " + str(tokens))
+		# print("tokens: " + str(tokens))
 
 		postings = []
 		for token in tokens:
@@ -79,7 +91,8 @@ if __name__ == '__main__':
 		for docID in finalSet:
 			docScores[docID] = 0
 			for tokenPosting in postings:
-				docScores[docID] += int(tokenPosting[docID])
+				if docID in tokenPosting:
+					docScores[docID] += int(tokenPosting[docID])
 
 		print("Top 10 results:")
 		i = 0
@@ -88,3 +101,4 @@ if __name__ == '__main__':
 			i += 1
 			if i == 10:
 				break
+		print("__________________________________________________")

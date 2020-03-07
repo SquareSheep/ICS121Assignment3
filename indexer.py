@@ -7,9 +7,12 @@ import json
 import math
 
 rootFolderName = "../DEV"
-docIDFileName = "../docIDs.txt"
-partialIndexFileName = "../index/partialIndex"
-realIndexFileName = "../index/realIndex"
+docIDMappingFilePath = "../docIDs"
+partialIndexFilePath = "../TemporaryIndexes/partialIndex"
+partialIndexOffsetFilePath = "../TemporaryIndexes/partialIndexOffset"
+tempIndexFilePath = "../TemporaryIndexes/temporaryIndex"
+finalIndexFilePath = "../FinalIndex/TemporaryIndexes"
+finalIndexOffsetFilePath = "../FinalIndex/indexOffset"
 
 stemmer = nltk.stem.PorterStemmer()
 
@@ -27,7 +30,6 @@ def tokenizeText(text):
 				currWord += char
 			else:
 				if currWord != "":
-					# print(currWord, stemmer.stem(currWord))
 					tokens.append(stemmer.stem(currWord))
 					currWord = ""
 		except:
@@ -36,31 +38,15 @@ def tokenizeText(text):
 	return tokens
 
 
-def getPageTextString(filename):
-	'''Returns a string of a file's text, given the filename'''
-	file = open(filename)
+def getPageTextString(filepath):
+	'''Returns a string of a file's text, given the complete filepath'''
+	file = open(filepath)
 	d = json.load(file)
 	if d["content"]:
 		return parseHTML(d["content"])
+	file.close()
 
 
-def getDocIDMapping():
-	docIDFile = open(docIDFileName,"r")
-	docIDMapping = {}
-
-	filename = (docIDFile.readline()).rstrip()
-
-	currID = 0
-	while filename:
-		docIDMapping[filename] = currID
-		filename = (docIDFile.readline()).rstrip()
-		currID += 1
-
-	docIDFile.close()
-
-	return docIDMapping
-
-# Not needed anymore, index already built---------
 def parseHTML(html):
 	'''Returns string of text given an HTML string'''
 
@@ -77,171 +63,74 @@ def parseHTML(html):
 	return pageTextString
 
 
-def createDocIDMapping(subdirs):
-	'''Creates the docID file given a list of the subdirectories'''
-	docIDFile = open(docIDFileName,"w")
-	for subdir in subdirs:
-		for filename in os.listdir(rootFolderName+"/"+subdir):
-			docIDFile.write(rootFolderName+"/"+subdir+"/"+filename+"\n")
-	docIDFile.close()
+def writePartialIndexToFile(partialIndex, partialIndexNum):
 
-
-def createIDURLMapping(subdirs):
-	docIDFile = open(docIDFileName,"w")
-	for subdir in subdirs:
-		for filename in os.listdir(rootFolderName+"/"+subdir):
-			print(filename)
-			js = open(rootFolderName+"/"+subdir+"/"+filename)
-			di = json.load(js)
-			docIDFile.write(di["url"]+"\n")
-			js.close()
-	docIDFile.close()
-
-
-def writePartialIndexToFile(index, filename):
-	indexFile = open(filename + ".txt","w")
-	indexOffsetFile = open(filename+"offset.txt","w")
+	partialIndexFile = open(partialIndexFilePath + str(partialIndexNum) + ".txt","w")
+	partialIndexOffsetFile = open(partialIndexOffsetFilePath + str(partialIndexNum) + ".txt","w")
 	offset = 0
 	prevOffset = 0
-	for word in sorted(index):
-		tempStr = word+":"
-		offset = len(word) + 1 # word:
+	for token in sorted(partialIndex):
+		tokenStr = token+":"
+		offset = len(token) + 1
 
-		for posting in index[word]:
-			tempStr += str(posting[0]) + " " + str(posting[1])+"|"
+		for posting in partialIndex[token]:
+			tokenStr += str(posting[0]) + " " + str(posting[1])+"|"
 			offset += 2 + len(str(posting[0])) + len(str(posting[1]))
 
-			# 			docID length	  " "	frequency length   "|"
-
-		tempStr += "\n"
+		tokenStr += "\n"
 		offset += 2
-		indexOffsetFile.write(word + " " + str(prevOffset+len(word)+1) + " " + str(offset-len(word)-2) + "\n")
-		indexFile.write(tempStr)
+		partialIndexOffsetFile.write(token + " " + str(prevOffset+len(token)+1) + " " + str(offset-len(token)-2) + "\n")
+		partialIndexFile.write(tokenStr)
 		prevOffset += offset
 
-	indexFile.close()
-	indexOffsetFile.close()
+	partialIndexFile.close()
+	partialIndexOffsetFile.close()
 
 
-def getPartialIndexOffset(filename):
+def getPartialIndexOffset(fileName):
 	'''Returns a dictionary of offsets for each word in the partial index'''
 	# offset[token] = (offset, length)
-	indexFile = open(filename + ".txt","r")
+	offsetFile = open(fileName + ".txt","r")
 	offset = {}
-	line = indexFile.readline().split()
+	line = offsetFile.readline().split()
 	while line:
 		offset[line[0]] = (line[1],line[2])
-		line = indexFile.readline().split()
+		line = offsetFile.readline().split()
 
 	return offset
 
 
-def mergeIndexes(numofindexes, uniqueTokens):
+def createTemporaryIndex(numofindexes, uniqueTokens):
 	# Order: docID, frequency, tf-idf score
 	# | 0 1 2 |
 	partialIndexes = []
 	partialIndexOffsets = []
 
-	finalIndex = open("../index/finalIndex.txt","w")
+	tempIndex = open(tempIndexFilePath,"w")
 
 	for i in range(0,numofindexes):
-		partialIndexes.append(open(partialIndexFileName + str(i) + ".txt","r"))
-		partialIndexOffsets.append(getPartialIndexOffset(partialIndexFileName+str(i)+"offset"))
+		partialIndexes.append(open(partialIndexFilePath + str(i) + ".txt","r"))
+		partialIndexOffsets.append(getPartialIndexOffset(partialIndexFilePath+str(i)+"offset"))
 
 	for token in sorted(uniqueTokens):
-		tempStr = token+":"
+		tokenStr = token+":"
 		for i in range(0,numofindexes):
 			if token in partialIndexOffsets[i]:
 				partialIndexes[i].seek(int(partialIndexOffsets[i][token][0]))
-				tempOut = partialIndexes[i].readline().rstrip() #partialIndexes[i].read(int(partialIndexOffsets[i][token][1])).rstrip()
-				print("TEMP" + tempOut)
-				tempStr += tempOut
-		tempStr += "\n"
-		finalIndex.write(tempStr)
-#-------------------------------------------------
-
-if __name__ == '__main__':
-
-	subdirs = os.listdir(rootFolderName)
-	#createDocIDMapping(subdirs)
-	createIDURLMapping(subdirs)
-	# docIDMapping = getDocIDMapping()
-
-	# Step 2: For each subdirectory:
-		# Tokenize each file
-		# Create a partial index for every X files
-	"""
-	partialIndexNum = 0
-	numofFiles = 0
-	numofPostings = 0
-	partialIndex = {}
-	uniqueTokens = {}
-	
-	for subdir in subdirs:
-		subdirectoryName = rootFolderName+"/"+subdir
-
-		for filename in os.listdir(subdirectoryName):
-			filename = subdirectoryName+"/"+ filename
-
-			numofFiles += 1
-			print(str(numofPostings)+" " + str(numofFiles) + "____________________________________FILE NAME: " + filename)
-
-			pageTextString = getPageTextString(filename)
-
-			tokens = {}
-			for token in tokenizeText(pageTextString):
-				if token not in tokens:
-					tokens[token] = 1
-				else:
-					tokens[token] += 1
-
-				if token not in uniqueTokens:
-					uniqueTokens[token] = 1
-				else:
-					uniqueTokens[token] += 1
-
-			for token in tokens:
-				if token not in partialIndex:
-					partialIndex[token] = []
-				partialIndex[token].append((docIDMapping[filename],tokens[token]))
-				numofPostings += 1
-
-			if numofPostings > 3000000:
-				writePartialIndexToFile(partialIndex, partialIndexFileName + str(partialIndexNum))
-				numofPostings = 0
-				partialIndexNum += 1
-				partialIndex = {}
+				tokenStr += partialIndexes[i].readline().rstrip()
+		tokenStr += "\n"
+		tempIndex.write(tokenStr)
 
 
-	if numofPostings > 0:
-		writePartialIndexToFile(partialIndex, partialIndexFileName + str(partialIndexNum))
-		numofPostings = 0
-		partialIndexNum += 1
-		partialIndex = {}
-
-	print("________________________DONE_________________________")
-	print("uniqueTokens:"+str(len(uniqueTokens)))
-	print("numofFiles:"+str(numofFiles))
-
-	i = 0
-	for token in sorted(uniqueTokens,key = lambda x: -uniqueTokens[x]):
-		print(token,uniqueTokens[token])
-		i += 1
-		if i == 100:
-			break
-
-	# Step 3: Merge the partial indexes
-	mergeIndexes(partialIndexNum, uniqueTokens)
-	"""
-	"""
+def createFinalIndex():
 	index = open("../index/finalIndex.txt","r")
 
 	indexNumber = 0
 	firstChar = "0"
 	offset = 0
 	N = 55393 # Total number of documents
-	finalIndex = open("../finalIndex/index0.txt","w")
-	offsetIndex = open("../finalIndex/indexOffset.txt","w")
+	finalIndex = open(finalIndexFilePath + "0.txt","w")
+	offsetIndex = open(finalIndexOffsetFilePath+".txt","w")
 	for line in index:
 		temp = line.split(":")
 
@@ -267,4 +156,87 @@ if __name__ == '__main__':
 		offset += len(tokenAndPostings)+1
 
 		finalIndex.write(tokenAndPostings)
-	"""
+
+if __name__ == '__main__':
+	# Step 1: For each subdirectory:
+		# Tokenize each file
+		# Create a partial index for every X files
+
+	partialIndexNum = 0
+	numofFiles = 0
+	numofPostings = 0
+	partialIndex = {}
+	uniqueTokens = {}
+	pageHashes = set()
+
+	subdirs = os.listdir(rootFolderName)
+	
+	for subdir in subdirs:
+		subdirectoryName = rootFolderName+"/"+subdir
+
+		for filePath in os.listdir(subdirectoryName):
+			filePath = subdirectoryName+"/"+ filePath
+
+			print(str(numofPostings)+" " + str(numofFiles) + " FILE NAME: " + filePath)
+
+
+			file = open(filePath)
+			fileJSON = json.load(file)
+			file.close()
+
+			pageTextString = getPageTextString(parseHTML(fileJSON["content"]))
+			pageURL = fileJSON["url"]
+			
+
+			pageHash = Simhash(pageTextString)
+			minDist = 100000000
+			skipPage = False
+			for hashedPage in pageHashes:
+				if pageHash.distance(hashedPage) <= 3:
+					skipPage = True
+					break
+			pageHashes.add(pageHash)
+			if skipPage:
+				break
+
+			tokens = {}
+			for token in tokenizeText(pageTextString):
+				if token not in tokens:
+					tokens[token] = 1
+				else:
+					tokens[token] += 1
+
+				if token not in uniqueTokens:
+					uniqueTokens[token] = 1
+				else:
+					uniqueTokens[token] += 1
+
+			for token in tokens:
+				if token not in partialIndex:
+					partialIndex[token] = []
+				partialIndex[token].append((numofFiles,tokens[token]))
+				numofPostings += 1
+
+			if numofPostings > 3000000:
+				writePartialIndexToFile(partialIndex, partialIndexFilePath + str(partialIndexNum))
+				numofPostings = 0
+				partialIndexNum += 1
+				partialIndex = {}
+
+			docIDFile.write(pageURL + " " + numofFiles + "\n")
+			numofFiles += 1
+
+
+	if numofPostings > 0:
+		writePartialIndexToFile(partialIndex, partialIndexNum)
+		numofPostings = 0
+		partialIndexNum += 1
+		partialIndex = {}
+
+	print("uniqueTokens:"+str(len(uniqueTokens) + "\nnumofFiles:"+str(numofFiles)))
+
+	# Step 2: Merge the partial indexes into one temporary index with all of the postings
+	createTemporaryIndex(partialIndexNum, uniqueTokens)
+
+	# Step 3: Add scores to all of the postings and write the final index
+	# createFinalIndex()
