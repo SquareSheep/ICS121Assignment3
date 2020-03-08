@@ -7,15 +7,21 @@ import json
 import math
 
 rootFolderName = "../DEV"
+
 docIDMappingFilePath = "../docIDs"
+
 partialIndexFilePath = "../TemporaryIndexes/partialIndex"
 partialIndexOffsetFilePath = "../TemporaryIndexes/partialIndexOffset"
+
 tempIndexFilePath = "../TemporaryIndexes/temporaryIndex"
-finalIndexFilePath = "../FinalIndex/TemporaryIndexes"
+
+finalIndexFilePath = "../FinalIndex/index"
 finalIndexOffsetFilePath = "../FinalIndex/indexOffset"
 
 stemmer = nltk.stem.PorterStemmer()
 importantTags = ("title","h1","h2","h3","b")
+importantWordsFilePath = "../importantWords"
+importantWordsOffsetFilePath = "../importantWordsOffset"
 
 
 def tokenizeText(text):
@@ -46,6 +52,21 @@ def	recordImportantWords(importantWords, pageSoup):
 				importantWords[numofFiles][tag] += 1
 			else:
 				importantWords[numofFiles][tag] = 1
+
+
+def writeImportantWordsToFile(importantWords):
+	file = open(importantWordsFilePath + ".txt","w")
+	offsetFile = open(importantWordsOffsetFilePath + ".txt","w")
+	offset = 0
+	for page in importantWords:
+		tempStr = ""
+		for token in page:
+			tempStr += token + " " + page[token] + "|"
+		file.write(tempStr + "\n")
+		offsetFile.write(str(offset)+"\n")
+		offset += len(tempStr)+1
+	file.close()
+	offsetFile.close()
 
 
 def getPageTextString(pageSoup):
@@ -183,9 +204,6 @@ def createFinalIndex():
 
 
 if __name__ == '__main__':
-	# Step 1: For each subdirectory:
-		# Tokenize each file
-		# Create a partial index for every X files
 
 	partialIndexNum = 0
 	numofFiles = 0
@@ -218,7 +236,6 @@ if __name__ == '__main__':
 				break
 			
 			recordImportantWords(importantWords, pageSoup)
-
 			tokens = {}
 			for token in tokenizeText(pageTextString):
 				if token not in tokens:
@@ -238,7 +255,7 @@ if __name__ == '__main__':
 				numofPostings += 1
 
 			if numofPostings > 3000000:
-				writePartialIndexToFile(partialIndex, partialIndexFilePath + str(partialIndexNum))
+				writePartialIndexToFile(partialIndex, partialIndexNum)
 				numofPostings = 0
 				partialIndexNum += 1
 				partialIndex = {}
@@ -253,10 +270,17 @@ if __name__ == '__main__':
 		partialIndexNum += 1
 		partialIndex = {}
 
+	writeImportantWordsToFile(importantWords)
+
 	print("uniqueTokens:"+str(len(uniqueTokens) + "\nnumofFiles:"+str(numofFiles)))
 
-	# Step 2: Merge the partial indexes into one temporary index with all of the postings
 	createTemporaryIndex(partialIndexNum, uniqueTokens)
 
-	# Step 3: Add scores to all of the postings and write the final index
-	# createFinalIndex()
+	"""
+	Must use these things in the final index:
+	- Anchor text
+	- Page rank
+	- Tokens in bold, title, or heading tags
+	- Tf-idf score
+	"""
+	createFinalIndex()
