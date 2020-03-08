@@ -15,6 +15,7 @@ finalIndexFilePath = "../FinalIndex/TemporaryIndexes"
 finalIndexOffsetFilePath = "../FinalIndex/indexOffset"
 
 stemmer = nltk.stem.PorterStemmer()
+importantTags = ("title","h1","h2","h3","b")
 
 
 def tokenizeText(text):
@@ -38,13 +39,36 @@ def tokenizeText(text):
 	return tokens
 
 
-def getPageTextString(filepath):
-	'''Returns a string of a file's text, given the complete filepath'''
-	file = open(filepath)
-	d = json.load(file)
-	if d["content"]:
-		return parseHTML(d["content"])
-	file.close()
+def	recordImportantWords(importantWords, pageSoup):
+	for tagType in importantTags:
+		for tag in pageSoup(tagType):
+			if tag in importantWords[numofFiles]:
+				importantWords[numofFiles][tag] += 1
+			else:
+				importantWords[numofFiles][tag] = 1
+
+
+def getPageTextString(pageSoup):
+	'''Returns a string of a file's text, given the page's soup'''
+	for script in pageSoup("script"):
+			script.decompose()
+	pageTextString = ""
+	for text in pageSoup.stripped_strings:
+		pageTextString += text + " "
+	return pageTextString
+
+
+def isPageTooSimilar(pageTextString, pageHashes):
+	pageHash = Simhash(pageTextString)
+	minDist = 100000000
+	skipPage = False
+	for hashedPage in pageHashes:
+		if pageHash.distance(hashedPage) <= 3:
+			skipPage = True
+			break
+	else:
+		pageHashes.add(pageHash)
+	return skipPage
 
 
 def parseHTML(html):
@@ -157,6 +181,7 @@ def createFinalIndex():
 
 		finalIndex.write(tokenAndPostings)
 
+
 if __name__ == '__main__':
 	# Step 1: For each subdirectory:
 		# Tokenize each file
@@ -168,6 +193,8 @@ if __name__ == '__main__':
 	partialIndex = {}
 	uniqueTokens = {}
 	pageHashes = set()
+	importantWords = [] # A list of dictionaries
+	# importantWords[docID][token] = occurences (number of times this token was in <title>,<h1>,<h2>,<h3>,<b>)
 
 	subdirs = os.listdir(rootFolderName)
 	
@@ -175,29 +202,22 @@ if __name__ == '__main__':
 		subdirectoryName = rootFolderName+"/"+subdir
 
 		for filePath in os.listdir(subdirectoryName):
+
 			filePath = subdirectoryName+"/"+ filePath
-
 			print(str(numofPostings)+" " + str(numofFiles) + " FILE NAME: " + filePath)
-
 
 			file = open(filePath)
 			fileJSON = json.load(file)
 			file.close()
 
-			pageTextString = getPageTextString(parseHTML(fileJSON["content"]))
 			pageURL = fileJSON["url"]
+			pageSoup = BeautifulSoup(fileJSON["content"],'lxml')
+			pageTextString = getPageTextString(pageSoup)			
 			
-
-			pageHash = Simhash(pageTextString)
-			minDist = 100000000
-			skipPage = False
-			for hashedPage in pageHashes:
-				if pageHash.distance(hashedPage) <= 3:
-					skipPage = True
-					break
-			pageHashes.add(pageHash)
-			if skipPage:
+			if isPageTooSimilar(pageTextString, pageHashes):
 				break
+			
+			recordImportantWords(importantWords, pageSoup)
 
 			tokens = {}
 			for token in tokenizeText(pageTextString):
