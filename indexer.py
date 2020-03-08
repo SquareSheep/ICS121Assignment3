@@ -5,6 +5,15 @@ import io
 import os
 import json
 import math
+from simhash import Simhash
+
+"""
+Options
+- Positional
+- Cosine ranking
+- Page rank
+
+"""
 
 rootFolderName = "../DEV"
 
@@ -45,13 +54,19 @@ def tokenizeText(text):
 	return tokens
 
 
-def	recordImportantWords(importantWords, pageSoup):
+def	recordImportantWords(importantWords, pageSoup, numofFiles):
+	importantWords.append({})
 	for tagType in importantTags:
 		for tag in pageSoup(tagType):
-			if tag in importantWords[numofFiles]:
-				importantWords[numofFiles][tag] += 1
-			else:
-				importantWords[numofFiles][tag] = 1
+			# if tag.text in importantWords[numofFiles]:
+			# 	importantWords[numofFiles][tag.text] += 1
+			# else:
+			# 	importantWords[numofFiles][tag.text] = 1
+			for token in tokenizeText(tag.text):
+				if token in importantWords[numofFiles]:
+					importantWords[numofFiles][token] += 1
+				else:
+					importantWords[numofFiles][token] = 1
 
 
 def writeImportantWordsToFile(importantWords):
@@ -61,7 +76,7 @@ def writeImportantWordsToFile(importantWords):
 	for page in importantWords:
 		tempStr = ""
 		for token in page:
-			tempStr += token + " " + page[token] + "|"
+			tempStr += token + " " + str(page[token]) + "|"
 		file.write(tempStr + "\n")
 		offsetFile.write(str(offset)+"\n")
 		offset += len(tempStr)+1
@@ -109,33 +124,35 @@ def parseHTML(html):
 
 
 def writePartialIndexToFile(partialIndex, partialIndexNum):
-
 	partialIndexFile = open(partialIndexFilePath + str(partialIndexNum) + ".txt","w")
 	partialIndexOffsetFile = open(partialIndexOffsetFilePath + str(partialIndexNum) + ".txt","w")
 	offset = 0
 	prevOffset = 0
 	for token in sorted(partialIndex):
 		tokenStr = token+":"
-		offset = len(token) + 1
+		# offset = len(token) + 1
 
 		for posting in partialIndex[token]:
-			tokenStr += str(posting[0]) + " " + str(posting[1])+"|"
-			offset += 2 + len(str(posting[0])) + len(str(posting[1]))
+			tokenStr += str(posting[0]) + " " + str(posting[1]) + " " + str(posting[2])
+			# offset += 2 + len(str(posting[0])) + len(str(posting[1]))
+
+			tokenStr += "|"
 
 		tokenStr += "\n"
-		offset += 2
+		# offset += 2
 		partialIndexOffsetFile.write(token + " " + str(prevOffset+len(token)+1) + " " + str(offset-len(token)-2) + "\n")
 		partialIndexFile.write(tokenStr)
 		prevOffset += offset
+		offset += len(tokenStr)
 
 	partialIndexFile.close()
 	partialIndexOffsetFile.close()
 
 
-def getPartialIndexOffset(fileName):
+def getPartialIndexOffset(indexNumber):
 	'''Returns a dictionary of offsets for each word in the partial index'''
 	# offset[token] = (offset, length)
-	offsetFile = open(fileName + ".txt","r")
+	offsetFile = open(partialIndexOffsetFilePath+str(indexNumber)+".txt","r")
 	offset = {}
 	line = offsetFile.readline().split()
 	while line:
@@ -151,11 +168,11 @@ def createTemporaryIndex(numofindexes, uniqueTokens):
 	partialIndexes = []
 	partialIndexOffsets = []
 
-	tempIndex = open(tempIndexFilePath,"w")
+	tempIndex = open(tempIndexFilePath+".txt","w")
 
 	for i in range(0,numofindexes):
 		partialIndexes.append(open(partialIndexFilePath + str(i) + ".txt","r"))
-		partialIndexOffsets.append(getPartialIndexOffset(partialIndexFilePath+str(i)+"offset"))
+		partialIndexOffsets.append(getPartialIndexOffset(i))
 
 	for token in sorted(uniqueTokens):
 		tokenStr = token+":"
@@ -215,6 +232,8 @@ if __name__ == '__main__':
 	# importantWords[docID][token] = occurences (number of times this token was in <title>,<h1>,<h2>,<h3>,<b>)
 
 	subdirs = os.listdir(rootFolderName)
+
+	docIDFile = open(docIDMappingFilePath + ".txt","w")
 	
 	for subdir in subdirs:
 		subdirectoryName = rootFolderName+"/"+subdir
@@ -235,34 +254,41 @@ if __name__ == '__main__':
 			if isPageTooSimilar(pageTextString, pageHashes):
 				break
 			
-			recordImportantWords(importantWords, pageSoup)
+			recordImportantWords(importantWords, pageSoup, numofFiles)
+
 			tokens = {}
+			tokenPosition = 0
 			for token in tokenizeText(pageTextString):
+
 				if token not in tokens:
-					tokens[token] = 1
-				else:
-					tokens[token] += 1
+					tokens[token] = []
+				tokens[token].append(tokenPosition)
 
 				if token not in uniqueTokens:
 					uniqueTokens[token] = 1
 				else:
 					uniqueTokens[token] += 1
+				tokenPosition += 1
 
 			for token in tokens:
 				if token not in partialIndex:
 					partialIndex[token] = []
-				partialIndex[token].append((numofFiles,tokens[token]))
+
+				partialIndex[token].append((numofFiles, len(tokens[token]), tokens[token]))
 				numofPostings += 1
 
-			if numofPostings > 3000000:
+			if numofPostings > 3000: # 3000000
 				writePartialIndexToFile(partialIndex, partialIndexNum)
 				numofPostings = 0
 				partialIndexNum += 1
 				partialIndex = {}
 
-			docIDFile.write(pageURL + " " + numofFiles + "\n")
+			docIDFile.write(pageURL + " " + str(numofFiles) + "\n")
 			numofFiles += 1
-
+			if numofFiles > 100:
+				break
+		if numofFiles > 100:
+			break
 
 	if numofPostings > 0:
 		writePartialIndexToFile(partialIndex, partialIndexNum)
@@ -272,7 +298,7 @@ if __name__ == '__main__':
 
 	writeImportantWordsToFile(importantWords)
 
-	print("uniqueTokens:"+str(len(uniqueTokens) + "\nnumofFiles:"+str(numofFiles)))
+	print("uniqueTokens:"+str(len(uniqueTokens)) + "\nnumofFiles:"+str(numofFiles))
 
 	createTemporaryIndex(partialIndexNum, uniqueTokens)
 
