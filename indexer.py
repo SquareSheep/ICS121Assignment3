@@ -46,11 +46,15 @@ def tokenizeText(text):
 				currWord += char
 			else:
 				if currWord != "":
-					tokens.append(stemmer.stem(currWord))
+					tempWord = stemmer.stem(currWord)
+					if tempWord != "":
+						tokens.append(tempWord)
 					currWord = ""
 		except:
 			continue
-	tokens.append(stemmer.stem(currWord))
+	tempWord = stemmer.stem(currWord)
+	if tempWord != "":
+		tokens.append(tempWord)
 	return tokens
 
 
@@ -129,6 +133,7 @@ def writePartialIndexToFile(partialIndex, partialIndexNum):
 	offset = 0
 	prevOffset = 0
 	for token in sorted(partialIndex):
+
 		tokenStr = token+":"
 		# offset = len(token) + 1
 
@@ -185,7 +190,7 @@ def createTemporaryIndex(numofindexes, uniqueTokens):
 
 
 def createFinalIndex():
-	index = open("../index/finalIndex.txt","r")
+	index = open(tempIndexFilePath+".txt","r")
 
 	indexNumber = 0
 	firstChar = "0"
@@ -197,6 +202,7 @@ def createFinalIndex():
 		temp = line.split(":")
 
 		token = temp[0]
+
 		if token[0] != firstChar:
 			indexNumber += 1
 			finalIndex = open("../finalIndex/index" + str(indexNumber) + ".txt","w")
@@ -209,6 +215,7 @@ def createFinalIndex():
 		
 		DFt = len(postings) # Number of documents containing this token
 		for posting in postings:
+			print(posting.split()[1])
 			TFd = int(posting.split()[1]) # Number of occurences of this token in the document
 			score = int(TFd*math.log(N/DFt, 3))
 			tokenAndPostings += posting + " " + str(score) + "|"
@@ -259,7 +266,8 @@ if __name__ == '__main__':
 			tokens = {}
 			tokenPosition = 0
 			for token in tokenizeText(pageTextString):
-
+				if token == "":
+					print("AAAAAAAAAAAAAAAAAAAAAAAa")
 				if token not in tokens:
 					tokens[token] = []
 				tokens[token].append(tokenPosition)
@@ -285,9 +293,9 @@ if __name__ == '__main__':
 
 			docIDFile.write(pageURL + " " + str(numofFiles) + "\n")
 			numofFiles += 1
-			if numofFiles > 100:
+			if numofFiles > 20:
 				break
-		if numofFiles > 100:
+		if numofFiles > 20:
 			break
 
 	if numofPostings > 0:
