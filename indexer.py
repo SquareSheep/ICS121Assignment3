@@ -136,7 +136,10 @@ def writePartialIndexToFile(partialIndex, partialIndexNum):
 		tokenStr = token+":"
 
 		for posting in partialIndex[token]:
-			tokenStr += str(posting[0]) + " " + str(posting[1]) + " " + str(posting[2])
+			tokenStr += str(posting[0]) + " " + str(posting[1]) + " " # + str(posting[2])
+			for i in range(len(posting[2])-1):
+				tokenStr += str(posting[2][i]) + " "
+			tokenStr += str(posting[2][len(posting[2])-1])
 
 			tokenStr += "|"
 

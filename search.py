@@ -25,7 +25,12 @@ def getPostings(token, tokenLocations):
 		postings = {}
 		for posting in line.split(":")[1].split("|")[0:-1]:
 			temp = posting.split()
-			postings[temp[0]] = temp[2]
+			listofPositions = []
+			for i in range(int(temp[1])):
+				listofPositions.append(temp[i+2])
+			postings[temp[0]] = (temp[int(temp[1])+2],listofPositions)
+			#		docID 		tf-idf score 	 list of positions
+			print("POSTING: " + str(postings[temp[0]]))
 		return postings
 
 
@@ -92,8 +97,12 @@ if __name__ == '__main__':
 			docScores[docID] = 0
 			for tokenPosting in postings:
 				if docID in tokenPosting:
-					docScores[docID] += int(tokenPosting[docID])
-
+					docScores[docID] += int(tokenPosting[docID][0])
+		print("FINAL SET: " + str(finalSet))
+		# closestWordScores = {}
+		# for docID in finalSet:
+		# 	closestWordScores[docID] = 1000000
+		# 	for 
 		print("Top 10 results:")
 		i = 0
 		for doc in sorted(docScores, key = lambda x : -docScores[x]):
