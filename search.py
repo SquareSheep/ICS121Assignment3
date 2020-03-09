@@ -18,20 +18,20 @@ Cosine ranking
 """
 
 def getPostings(token, tokenLocations):
+	postings = {}
 	if token in tokenLocations:
 		file = open("../finalIndex/index" + str(tokenLocations[token][0]) + ".txt")
 		file.seek(int(tokenLocations[token][1]))
 		line = file.readline()
-		postings = {}
 		for posting in line.split(":")[1].split("|")[0:-1]:
 			temp = posting.split()
 			listofPositions = []
 			for i in range(int(temp[1])):
-				listofPositions.append(temp[i+2])
-			postings[temp[0]] = (temp[int(temp[1])+2],listofPositions)
+				listofPositions.append(int(temp[i+2]))
+			postings[int(temp[0])] = (int(temp[int(temp[1])+2]),listofPositions)
 			#		docID 		tf-idf score 	 list of positions
-			print("POSTING: " + str(postings[temp[0]]))
-		return postings
+			print("POSTING: " + str(temp[0]) + " " + str(postings[int(temp[0])]))
+	return postings
 
 
 def getTokenLocations():
@@ -68,13 +68,29 @@ if __name__ == '__main__':
 	while True:
 		query = input('Enter a search, or just hit enter to exit: ')
 		query = query.lower()
-		if query == "" or query == "q":
+		if query == "":
 			break
-		# print("query: " + query)
 
 		tokens = tokenizeText(query)
-		# print("tokens: " + str(tokens))
 
+		"""
+		1: Get a dictionary of the documents that contain all of the query tokens
+			a. Initialize each value to the tf-idf score
+			- documents[docID] = 
+
+		2: For each document:
+			a. Find the minimum distance between any two query tokens
+			- minWordDist[docID] = minDist
+
+		3. Find the highest minimum distance and normalize
+			a. minWordDist[docID] = (highestMinDist-minDist)/highestMinDist
+
+		4. For every docID in documents:
+			a. Multiply it by the normalized minimum distance
+			- documents[docID] *= minWordDist[docID]
+
+		5. Print the URLs of the documents in order by score
+		"""
 		postings = []
 		for token in tokens:
 			postings.append(getPostings(token, tokenLocations))
@@ -85,7 +101,7 @@ if __name__ == '__main__':
 		for i in range(len(postings)):
 			docIDs.append(set())
 			for posting in postings[i]:
-				docIDs[i].add(posting)
+				docIDs[i].add(int(posting))
 
 		finalSet = docIDs[0]
 
@@ -96,18 +112,23 @@ if __name__ == '__main__':
 		for docID in finalSet:
 			docScores[docID] = 0
 			for tokenPosting in postings:
-				if docID in tokenPosting:
-					docScores[docID] += int(tokenPosting[docID][0])
-		print("FINAL SET: " + str(finalSet))
-		# closestWordScores = {}
-		# for docID in finalSet:
-		# 	closestWordScores[docID] = 1000000
-		# 	for 
-		print("Top 10 results:")
-		i = 0
-		for doc in sorted(docScores, key = lambda x : -docScores[x]):
-			print(docIDMapping[int(doc)] + " " + str(docScores[doc]))
-			i += 1
-			if i == 10:
-				break
+				print(tokenPosting)
+				# if docID in tokenPosting:
+				# 	print("AAAA: " + str(tokenPosting[docID]))
+				# 	docScores[docID] += tokenPosting[docID][0]
+
+		for docID in docScores:
+			print("DOCID: " + str(docScores[docID]))
+
+		if len(finalSet) > 0:
+			print("FINAL SET: " + str(finalSet))
+			print("Top 10 results:")
+			i = 0
+			for doc in sorted(docScores, key = lambda x : -docScores[x]):
+				print(docIDMapping[int(doc)] + "|" + str(docScores[doc]))
+				i += 1
+				if i == 10:
+					break
+		else:
+			print("No results")
 		print("__________________________________________________")

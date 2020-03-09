@@ -220,7 +220,7 @@ def createFinalIndex():
 		tokenAndPostings += "\n"
 
 		offsetIndex.write(token + " " + str(indexNumber) + " " + str(offset) + "\n")
-		offset += len(tokenAndPostings)
+		offset += len(tokenAndPostings)+1
 
 		finalIndex.write(tokenAndPostings)
 
@@ -289,7 +289,7 @@ if __name__ == '__main__':
 				partialIndexNum += 1
 				partialIndex = {}
 
-			docIDFile.write(pageURL + " " + str(numofFiles) + "\n")
+			docIDFile.write(pageURL + "\n")
 			numofFiles += 1
 			if numofFiles > 20:
 				break
