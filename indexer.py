@@ -131,24 +131,20 @@ def writePartialIndexToFile(partialIndex, partialIndexNum):
 	partialIndexFile = open(partialIndexFilePath + str(partialIndexNum) + ".txt","w")
 	partialIndexOffsetFile = open(partialIndexOffsetFilePath + str(partialIndexNum) + ".txt","w")
 	offset = 0
-	prevOffset = 0
 	for token in sorted(partialIndex):
 
 		tokenStr = token+":"
-		# offset = len(token) + 1
 
 		for posting in partialIndex[token]:
 			tokenStr += str(posting[0]) + " " + str(posting[1]) + " " + str(posting[2])
-			# offset += 2 + len(str(posting[0])) + len(str(posting[1]))
 
 			tokenStr += "|"
 
 		tokenStr += "\n"
-		# offset += 2
-		partialIndexOffsetFile.write(token + " " + str(prevOffset+len(token)+1) + " " + str(offset-len(token)-2) + "\n")
+		
+		partialIndexOffsetFile.write(token + " " + str(offset+len(token)+1) + " " + "0" + "\n")
 		partialIndexFile.write(tokenStr)
-		prevOffset += offset
-		offset += len(tokenStr)
+		offset += len(tokenStr)+1
 
 	partialIndexFile.close()
 	partialIndexOffsetFile.close()
@@ -215,14 +211,13 @@ def createFinalIndex():
 		
 		DFt = len(postings) # Number of documents containing this token
 		for posting in postings:
-			print(posting.split()[1])
 			TFd = int(posting.split()[1]) # Number of occurences of this token in the document
 			score = int(TFd*math.log(N/DFt, 3))
 			tokenAndPostings += posting + " " + str(score) + "|"
 		tokenAndPostings += "\n"
 
 		offsetIndex.write(token + " " + str(indexNumber) + " " + str(offset) + "\n")
-		offset += len(tokenAndPostings)+1
+		offset += len(tokenAndPostings)
 
 		finalIndex.write(tokenAndPostings)
 
