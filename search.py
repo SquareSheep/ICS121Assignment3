@@ -30,7 +30,7 @@ def getPostings(token, tokenLocations):
 				listofPositions.append(int(temp[i+2]))
 			postings[int(temp[0])] = (int(temp[int(temp[1])+2]),listofPositions)
 			#		docID 		tf-idf score 	 list of positions
-			print("POSTING: " + str(temp[0]) + " " + str(postings[int(temp[0])]))
+			# print("POSTING: " + str(temp[0]) + " " + str(postings[int(temp[0])]))
 	return postings
 
 
@@ -96,6 +96,7 @@ if __name__ == '__main__':
 			postings.append(getPostings(token, tokenLocations))
 
 		postings.sort(key= lambda x : len(x))
+		# print("POSTINGS: " + str(postings))
 
 		docIDs = []
 		for i in range(len(postings)):
@@ -112,23 +113,51 @@ if __name__ == '__main__':
 		for docID in finalSet:
 			docScores[docID] = 0
 			for tokenPosting in postings:
-				print(tokenPosting)
-				# if docID in tokenPosting:
-				# 	print("AAAA: " + str(tokenPosting[docID]))
-				# 	docScores[docID] += tokenPosting[docID][0]
+				if docID in tokenPosting:
+					docScores[docID] += tokenPosting[docID][0]
 
-		for docID in docScores:
-			print("DOCID: " + str(docScores[docID]))
+		# print("DOCSCORES: " + str(docScores))
+		# print("FINAL SET: " + str(finalSet))
 
-		if len(finalSet) > 0:
-			print("FINAL SET: " + str(finalSet))
+		# for docID in docScores:
+		# 	print("DOCID: " + str(docScores[docID]))
+		badDocs = set()
+		if len(postings) > 1:
+			farthestDist = 0
+			minDist = {}
+			for docID in docScores:
+				minDist[docID] = 100000000
+				for token1 in postings:
+					for token2 in postings:
+						if token1 != token2:
+							if docID in token1 and docID in token2:
+								# print("token1: " + str(token1[docID][1]))
+								dist = 100000000
+								for position1 in token1[docID][1]:
+									for position2 in token2[docID][1]:
+										if abs(position1-position2) < dist:
+											dist = abs(position1-position2)
+								if dist > farthestDist:
+									farthestDist = dist
+								if dist < minDist[docID]:
+									minDist[docID] = dist
+							else:
+								# print(str(docID) + " NOT in token1 and docID in token2")
+								badDocs.add(docID)
+
+			for docID in docScores:
+				# print("minDist[" + str(docID) + "]: " + str(minDist[docID]))
+				docScores[docID] *= (farthestDist - minDist[docID])/farthestDist
+
+		if len(finalSet) - len(badDocs) > 0:
 			print("Top 10 results:")
 			i = 0
 			for doc in sorted(docScores, key = lambda x : -docScores[x]):
-				print(docIDMapping[int(doc)] + "|" + str(docScores[doc]))
-				i += 1
-				if i == 10:
-					break
+				if doc not in badDocs:
+					print(docIDMapping[int(doc)] + " |" + str(docScores[doc]))
+					i += 1
+					if i == 10:
+						break
 		else:
 			print("No results")
 		print("__________________________________________________")

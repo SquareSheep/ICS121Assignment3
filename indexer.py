@@ -103,7 +103,7 @@ def isPageTooSimilar(pageTextString, pageHashes):
 	minDist = 100000000
 	skipPage = False
 	for hashedPage in pageHashes:
-		if pageHash.distance(hashedPage) <= 3:
+		if pageHash.distance(hashedPage) < 2:
 			skipPage = True
 			break
 	else:
@@ -264,8 +264,6 @@ if __name__ == '__main__':
 			tokens = {}
 			tokenPosition = 0
 			for token in tokenizeText(pageTextString):
-				if token == "":
-					print("AAAAAAAAAAAAAAAAAAAAAAAa")
 				if token not in tokens:
 					tokens[token] = []
 				tokens[token].append(tokenPosition)
@@ -283,7 +281,7 @@ if __name__ == '__main__':
 				partialIndex[token].append((numofFiles, len(tokens[token]), tokens[token]))
 				numofPostings += 1
 
-			if numofPostings > 3000: # 3000000
+			if numofPostings > 3000000: # 3000000
 				writePartialIndexToFile(partialIndex, partialIndexNum)
 				numofPostings = 0
 				partialIndexNum += 1
@@ -291,10 +289,10 @@ if __name__ == '__main__':
 
 			docIDFile.write(pageURL + "\n")
 			numofFiles += 1
-			if numofFiles > 20:
-				break
-		if numofFiles > 20:
-			break
+		# 	if numofFiles > 20:
+		# 		break
+		# if numofFiles > 20:
+		# 	break
 
 	if numofPostings > 0:
 		writePartialIndexToFile(partialIndex, partialIndexNum)
