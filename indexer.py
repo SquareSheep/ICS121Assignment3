@@ -244,7 +244,7 @@ if __name__ == '__main__':
 		for filePath in os.listdir(subdirectoryName):
 
 			filePath = subdirectoryName+"/"+ filePath
-			print(str(numofPostings)+" " + str(numofFiles) + filePath[7:14])
+			print(str(numofPostings)+" " + str(numofFiles) + filePath)
 
 			file = open(filePath)
 			fileJSON = json.load(file)
@@ -252,9 +252,14 @@ if __name__ == '__main__':
 
 			pageURL = fileJSON["url"]
 			pageSoup = BeautifulSoup(fileJSON["content"],'lxml')
-			pageTextString = getPageTextString(pageSoup)			
-			
-			if isPageTooSimilar(pageTextString, pageHashes):
+			pageTextString = getPageTextString(pageSoup)
+			# print(len(pageTextString))			
+			if len(pageTextString) < 700 or len(pageTextString) > 70000000:
+				continue
+			try:
+				if isPageTooSimilar(pageTextString, pageHashes):
+					continue
+			except:
 				continue
 			
 			recordImportantWords(importantWords, pageSoup, numofFiles)

@@ -87,7 +87,7 @@ def getBoolDocs(postings):
 		docSets.append(set())
 		for docID in postings[token]:
 			docSets[i].add(docID)
-		print(docSets[i])
+		#print(docSets[i])
 
 	finalSet = set()
 	for docID in docSets[0]:
@@ -121,8 +121,8 @@ if __name__ == '__main__':
 			postings[token] = (getPostings(token, tokenLocations))
 
 		if len(postings) > 0:
-			for token in postings:
-				print("POSTING: " + str(token) + " " + str(postings[token]))
+			#for token in postings:
+				#print("POSTING: " + str(token) + " " + str(postings[token]))
 
 			docSet = getBoolDocs(postings)
 
@@ -141,7 +141,7 @@ if __name__ == '__main__':
 			queryVector = {}
 			for token in queryTokens:
 				queryVector[token] = queryTokens.count(token)
-			print(queryVector)
+			#print(queryVector)
 
 			docVectors = {}
 			for docID in docSet:
@@ -150,12 +150,12 @@ if __name__ == '__main__':
 					docVectors[docID][token] = 0
 					if docID in postings[token]:
 						docVectors[docID][token] += postings[token][docID][0]
-			print(docVectors)
+			#print(docVectors)
 
 			QJ2 = 0
 			for token in queryVector:
 				QJ2 += queryVector[token]*queryVector[token]
-			print("QJ2: " + str(QJ2))
+			#print("QJ2: " + str(QJ2))
 
 			DIJ2 = {}
 			DIJQJ = {}
@@ -165,13 +165,13 @@ if __name__ == '__main__':
 				for token in docVectors[docID]:
 					DIJ2[docID] += docVectors[docID][token]*docVectors[docID][token]
 					DIJQJ[docID] += docVectors[docID][token]*queryVector[token]
-			print("DOCDIJ: " + str(DIJ2))
-			print("DOCDP: " + str(DIJQJ))
+			#print("DOCDIJ: " + str(DIJ2))
+			#print("DOCDP: " + str(DIJQJ))
 
 			cosineScores = {}
 			for docID in docSet:
 				cosineScores[docID] = DIJQJ[docID] / math.sqrt(DIJ2[docID]*QJ2)
-			print("CONSINE SCORES: " + str(cosineScores))
+			#print("CONSINE SCORES: " + str(cosineScores))
 
 			for docID in docScores:
 				docScores[docID] *= cosineScores[docID]
