@@ -1,7 +1,9 @@
 import io
+import math
 from simhash import Simhash
 from indexer import tokenizeText
 from indexer import docIDMappingFilePath
+from indexer import importantWordsFilePath
 
 """
 TODO:
@@ -17,6 +19,11 @@ Cosine ranking
 
 """
 
+def getQueryIDFScore(queryTokens):
+	N = 55393
+
+
+
 def getPostings(token, tokenLocations):
 	postings = {}
 	if token in tokenLocations:
@@ -25,13 +32,26 @@ def getPostings(token, tokenLocations):
 		line = file.readline()
 		for posting in line.split(":")[1].split("|")[0:-1]:
 			temp = posting.split()
-			listofPositions = []
-			for i in range(int(temp[1])):
-				listofPositions.append(int(temp[i+2]))
-			postings[int(temp[0])] = (int(temp[int(temp[1])+2]),listofPositions)
+			postings[int(temp[0])] = (int(temp[1]),int(temp[2]))
 			#		docID 		tf-idf score 	 list of positions
 			# print("POSTING: " + str(temp[0]) + " " + str(postings[int(temp[0])]))
 	return postings
+
+
+def getImportantWords():
+	file = open(importantWordsFilePath+".txt")
+	importantWords = []
+	line = file.readline()
+	i = 0
+	while line:
+		importantWords.append({})
+		for word in line.split("|")[:-1]:
+			temp = word.split()
+			importantWords[i][temp[0]] = int(temp[1])
+		line = file.readline()
+		i += 1
+	file.close()
+	return importantWords
 
 
 def getTokenLocations():
@@ -60,9 +80,31 @@ def getDocIDMapping():
 	return docIDMapping
 
 
+def getBoolDocs(postings):
+	'''Returns a set of docIDs that contain all of the query words'''
+	docSets = []
+	for i, token in enumerate(postings):
+		docSets.append(set())
+		for docID in postings[token]:
+			docSets[i].add(docID)
+		print(docSets[i])
+
+	finalSet = set()
+	for docID in docSets[0]:
+		flag = True
+		for i in range(1,len(docSets)):
+			if docID not in docSets[i]:
+				flag = False
+		if flag:
+			finalSet.add(docID)
+			
+	return finalSet
+
+
 if __name__ == '__main__':
 	docIDMapping = getDocIDMapping()
 	tokenLocations = getTokenLocations()
+	importantWords = getImportantWords()
 
 	print("___________Assignment 3 Search Engine_____________")
 	while True:
@@ -71,93 +113,78 @@ if __name__ == '__main__':
 		if query == "":
 			break
 
-		tokens = tokenizeText(query)
+		queryTokens = tokenizeText(query)
+		print("QUERY: " + str(query) + " " + str(queryTokens))
 
-		"""
-		1: Get a dictionary of the documents that contain all of the query tokens
-			a. Initialize each value to the tf-idf score
-			- documents[docID] = 
+		postings = {}
+		for token in queryTokens:
+			postings[token] = (getPostings(token, tokenLocations))
 
-		2: For each document:
-			a. Find the minimum distance between any two query tokens
-			- minWordDist[docID] = minDist
+		if len(postings) > 0:
+			for token in postings:
+				print("POSTING: " + str(token) + " " + str(postings[token]))
 
-		3. Find the highest minimum distance and normalize
-			a. minWordDist[docID] = (highestMinDist-minDist)/highestMinDist
+			docSet = getBoolDocs(postings)
 
-		4. For every docID in documents:
-			a. Multiply it by the normalized minimum distance
-			- documents[docID] *= minWordDist[docID]
+		# MAIN SECTION ####################################################
+		if len(postings) > 0:
 
-		5. Print the URLs of the documents in order by score
-		"""
-		postings = []
-		for token in tokens:
-			postings.append(getPostings(token, tokenLocations))
+			# TF-IDF SCORING #############################
+			docScores = {}
+			for docID in docSet:
+				docScores[docID] = 0
+				for token in postings:
+					if docID in postings[token]:
+						docScores[docID] += postings[token][docID][1]
 
-		postings.sort(key= lambda x : len(x))
-		# print("POSTINGS: " + str(postings))
+			# COSINE SCORING #############################
+			queryVector = {}
+			for token in queryTokens:
+				queryVector[token] = queryTokens.count(token)
+			print(queryVector)
 
-		docIDs = []
-		for i in range(len(postings)):
-			docIDs.append(set())
-			for posting in postings[i]:
-				docIDs[i].add(int(posting))
+			docVectors = {}
+			for docID in docSet:
+				docVectors[docID] = {}
+				for token in queryTokens:
+					docVectors[docID][token] = 0
+					if docID in postings[token]:
+						docVectors[docID][token] += postings[token][docID][0]
+			print(docVectors)
 
-		finalSet = docIDs[0]
+			QJ2 = 0
+			for token in queryVector:
+				QJ2 += queryVector[token]*queryVector[token]
+			print("QJ2: " + str(QJ2))
 
-		for i in range(len(docIDs)-1):
-			finalSet = docIDs[i].intersection(docIDs[i+1])
+			DIJ2 = {}
+			DIJQJ = {}
+			for docID in docSet:
+				DIJ2[docID] = 0
+				DIJQJ[docID] = 0
+				for token in docVectors[docID]:
+					DIJ2[docID] += docVectors[docID][token]*docVectors[docID][token]
+					DIJQJ[docID] += docVectors[docID][token]*queryVector[token]
+			print("DOCDIJ: " + str(DIJ2))
+			print("DOCDP: " + str(DIJQJ))
 
-		docScores = {}
-		for docID in finalSet:
-			docScores[docID] = 0
-			for tokenPosting in postings:
-				if docID in tokenPosting:
-					docScores[docID] += tokenPosting[docID][0]
-
-		# print("DOCSCORES: " + str(docScores))
-		# print("FINAL SET: " + str(finalSet))
-
-		# for docID in docScores:
-		# 	print("DOCID: " + str(docScores[docID]))
-		badDocs = set()
-		if len(postings) > 1:
-			farthestDist = 0
-			minDist = {}
-			for docID in docScores:
-				minDist[docID] = 100000000
-				for token1 in postings:
-					for token2 in postings:
-						if token1 != token2:
-							if docID in token1 and docID in token2:
-								# print("token1: " + str(token1[docID][1]))
-								dist = 100000000
-								for position1 in token1[docID][1]:
-									for position2 in token2[docID][1]:
-										if abs(position1-position2) < dist:
-											dist = abs(position1-position2)
-								if dist > farthestDist:
-									farthestDist = dist
-								if dist < minDist[docID]:
-									minDist[docID] = dist
-							else:
-								# print(str(docID) + " NOT in token1 and docID in token2")
-								badDocs.add(docID)
+			cosineScores = {}
+			for docID in docSet:
+				cosineScores[docID] = DIJQJ[docID] / math.sqrt(DIJ2[docID]*QJ2)
+			print("CONSINE SCORES: " + str(cosineScores))
 
 			for docID in docScores:
-				# print("minDist[" + str(docID) + "]: " + str(minDist[docID]))
-				docScores[docID] *= (farthestDist - minDist[docID])/farthestDist
-
-		if len(finalSet) - len(badDocs) > 0:
-			print("Top 10 results:")
+				docScores[docID] *= cosineScores[docID]
+					
+		###################################################################
+		if len(postings) > 0 and len(docSet) > 0:
+			print("Top 25 results:")
 			i = 0
 			for doc in sorted(docScores, key = lambda x : -docScores[x]):
-				if doc not in badDocs:
-					print(docIDMapping[int(doc)] + " |" + str(docScores[doc]))
-					i += 1
-					if i == 10:
-						break
+				print(docIDMapping[int(doc)] + " |" + str(docScores[doc]))
+				i += 1
+				if i == 25:
+					break
 		else:
 			print("No results")
 		print("__________________________________________________")

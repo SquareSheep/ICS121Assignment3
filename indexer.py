@@ -103,7 +103,7 @@ def isPageTooSimilar(pageTextString, pageHashes):
 	minDist = 100000000
 	skipPage = False
 	for hashedPage in pageHashes:
-		if pageHash.distance(hashedPage) < 2:
+		if pageHash.distance(hashedPage) < 3:
 			skipPage = True
 			break
 	else:
@@ -136,12 +136,7 @@ def writePartialIndexToFile(partialIndex, partialIndexNum):
 		tokenStr = token+":"
 
 		for posting in partialIndex[token]:
-			tokenStr += str(posting[0]) + " " + str(posting[1]) + " " # + str(posting[2])
-			for i in range(len(posting[2])-1):
-				tokenStr += str(posting[2][i]) + " "
-			tokenStr += str(posting[2][len(posting[2])-1])
-
-			tokenStr += "|"
+			tokenStr += str(posting[0]) + " " + str(posting[1]) + "|"
 
 		tokenStr += "\n"
 		
@@ -227,6 +222,9 @@ def createFinalIndex():
 
 if __name__ == '__main__':
 
+	# TEMPORARY
+	currFiles = 0
+
 	partialIndexNum = 0
 	numofFiles = 0
 	numofPostings = 0
@@ -246,7 +244,7 @@ if __name__ == '__main__':
 		for filePath in os.listdir(subdirectoryName):
 
 			filePath = subdirectoryName+"/"+ filePath
-			print(str(numofPostings)+" " + str(numofFiles) + " FILE NAME: " + filePath)
+			print(str(numofPostings)+" " + str(numofFiles) + filePath[7:14])
 
 			file = open(filePath)
 			fileJSON = json.load(file)
@@ -257,31 +255,30 @@ if __name__ == '__main__':
 			pageTextString = getPageTextString(pageSoup)			
 			
 			if isPageTooSimilar(pageTextString, pageHashes):
-				break
+				continue
 			
 			recordImportantWords(importantWords, pageSoup, numofFiles)
 
 			tokens = {}
-			tokenPosition = 0
 			for token in tokenizeText(pageTextString):
 				if token not in tokens:
-					tokens[token] = []
-				tokens[token].append(tokenPosition)
+					tokens[token] = 1
+				else:
+					tokens[token] += 1
 
 				if token not in uniqueTokens:
 					uniqueTokens[token] = 1
 				else:
 					uniqueTokens[token] += 1
-				tokenPosition += 1
 
 			for token in tokens:
 				if token not in partialIndex:
 					partialIndex[token] = []
 
-				partialIndex[token].append((numofFiles, len(tokens[token]), tokens[token]))
+				partialIndex[token].append((numofFiles, tokens[token]))
 				numofPostings += 1
 
-			if numofPostings > 3000000: # 3000000
+			if numofPostings > 2000000: # 3000000
 				writePartialIndexToFile(partialIndex, partialIndexNum)
 				numofPostings = 0
 				partialIndexNum += 1
@@ -289,9 +286,12 @@ if __name__ == '__main__':
 
 			docIDFile.write(pageURL + "\n")
 			numofFiles += 1
-		# 	if numofFiles > 20:
+
+		# 	currFiles += 1
+		# 	if currFiles == 10:
+		# 		currFiles = 0
 		# 		break
-		# if numofFiles > 20:
+		# if numofFiles > 100:
 		# 	break
 
 	if numofPostings > 0:
