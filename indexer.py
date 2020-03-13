@@ -203,15 +203,19 @@ def createFinalIndex():
 			firstChar = token[0]
 			offset = 0
 
-		postings = temp[1].split("|")[0:-1]
+		tempPostings = temp[1].split("|")[0:-1]
+		postings = []
 
-		tokenAndPostings = token + ":"
-		
-		DFt = len(postings) # Number of documents containing this token
-		for posting in postings:
+		DFt = len(tempPostings) # Number of documents containing this token
+		for posting in tempPostings:
 			TFd = int(posting.split()[1]) # Number of occurences of this token in the document
 			score = int(TFd*math.log(N/DFt, 3))
-			tokenAndPostings += posting + " " + str(score) + "|"
+			postings.append((posting,score))
+			
+
+		tokenAndPostings = token + ":"
+		for posting in sorted(postings, key = lambda x : -x[1]):
+			tokenAndPostings += posting[0] + " " + str(posting[1]) + "|"
 		tokenAndPostings += "\n"
 
 		offsetIndex.write(token + " " + str(indexNumber) + " " + str(offset) + "\n")
@@ -237,7 +241,7 @@ if __name__ == '__main__':
 	subdirs = os.listdir(rootFolderName)
 
 	docIDFile = open(docIDMappingFilePath + ".txt","w")
-	
+
 	for subdir in subdirs:
 		subdirectoryName = rootFolderName+"/"+subdir
 
@@ -253,7 +257,6 @@ if __name__ == '__main__':
 			pageURL = fileJSON["url"]
 			pageSoup = BeautifulSoup(fileJSON["content"],'lxml')
 			pageTextString = getPageTextString(pageSoup)
-			# print(len(pageTextString))			
 			if len(pageTextString) < 700 or len(pageTextString) > 70000000:
 				continue
 			try:
@@ -262,32 +265,32 @@ if __name__ == '__main__':
 			except:
 				continue
 			
-			recordImportantWords(importantWords, pageSoup, numofFiles)
+			# recordImportantWords(importantWords, pageSoup, numofFiles)
 
-			tokens = {}
-			for token in tokenizeText(pageTextString):
-				if token not in tokens:
-					tokens[token] = 1
-				else:
-					tokens[token] += 1
+			# tokens = {}
+			# for token in tokenizeText(pageTextString):
+			# 	if token not in tokens:
+			# 		tokens[token] = 1
+			# 	else:
+			# 		tokens[token] += 1
 
-				if token not in uniqueTokens:
-					uniqueTokens[token] = 1
-				else:
-					uniqueTokens[token] += 1
+			# 	if token not in uniqueTokens:
+			# 		uniqueTokens[token] = 1
+			# 	else:
+			# 		uniqueTokens[token] += 1
 
-			for token in tokens:
-				if token not in partialIndex:
-					partialIndex[token] = []
+			# for token in tokens:
+			# 	if token not in partialIndex:
+			# 		partialIndex[token] = []
 
-				partialIndex[token].append((numofFiles, tokens[token]))
-				numofPostings += 1
+			# 	partialIndex[token].append((numofFiles, tokens[token]))
+			# 	numofPostings += 1
 
-			if numofPostings > 2000000: # 3000000
-				writePartialIndexToFile(partialIndex, partialIndexNum)
-				numofPostings = 0
-				partialIndexNum += 1
-				partialIndex = {}
+			# if numofPostings > 2000000: # 3000000
+			# 	writePartialIndexToFile(partialIndex, partialIndexNum)
+			# 	numofPostings = 0
+			# 	partialIndexNum += 1
+			# 	partialIndex = {}
 
 			docIDFile.write(pageURL + "\n")
 			numofFiles += 1
@@ -299,23 +302,16 @@ if __name__ == '__main__':
 		# if numofFiles > 100:
 		# 	break
 
-	if numofPostings > 0:
-		writePartialIndexToFile(partialIndex, partialIndexNum)
-		numofPostings = 0
-		partialIndexNum += 1
-		partialIndex = {}
+	# if numofPostings > 0:
+	# 	writePartialIndexToFile(partialIndex, partialIndexNum)
+	# 	numofPostings = 0
+	# 	partialIndexNum += 1
+	# 	partialIndex = {}
 
-	writeImportantWordsToFile(importantWords)
+	# writeImportantWordsToFile(importantWords)
 
-	print("uniqueTokens:"+str(len(uniqueTokens)) + "\nnumofFiles:"+str(numofFiles))
+	# print("uniqueTokens:"+str(len(uniqueTokens)) + "\nnumofFiles:"+str(numofFiles))
 
-	createTemporaryIndex(partialIndexNum, uniqueTokens)
+	# createTemporaryIndex(partialIndexNum, uniqueTokens)
 
-	"""
-	Must use these things in the final index:
-	- Anchor text
-	- Page rank
-	- Tokens in bold, title, or heading tags
-	- Tf-idf score
-	"""
-	createFinalIndex()
+	# createFinalIndex()
