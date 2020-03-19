@@ -1,4 +1,3 @@
-import io
 import math
 import time
 from simhash import Simhash
@@ -7,6 +6,8 @@ from indexer import docIDMappingFilePath
 from indexer import importantWordsFilePath
 
 stopWords = {"a","about","above","after","again","against","all","am","an","and","any","are","aren't","as","at","be","because","been","before","being","below","between","both","but","by","can't","cannot","could","couldn't","did","didn't","do","does","doesn't","doing","don't","down","during","each","few","for","from","further","had","hadn't","has","hasn't","have","haven't","having","he","he'd","he'll","he's","her","here","here's","hers","herself","him","himself","his","how","how's","i","i'd","i'll","i'm","i've","if","in","into","is","isn't","it","it's","its","itself","let's","me","more","most","mustn't","my","myself","no","nor","not","of","off","on","once","only","or","other","ought","our","ours ourselves","out","over","own","same","shan't","she","she'd","she'll","she's","should","shouldn't","so","some","such","than","that","that's","the","their","theirs","them","themselves","then","there","there's","these","they","they'd","they'll","they're","they've","this","those","through","to","too","under","until","up","very","was","wasn't","we","we'd","we'll","we're","we've","were","weren't","what","what's","when","when's","where","where's","which","while","who","who's","whom","why","why's","with","won't","would","wouldn't","you","you'd","you'll","you're","you've","your","yours","yourself","yourselves"}
+pageRankFilePath = "../pageRanks"
+
 
 def getQueryIDFScore(queryTokens):
 	N = 55393
@@ -26,8 +27,6 @@ def getPostings(token, tokenLocations, threshold=50000):
 			i += 1
 			if i == threshold:
 				break
-			#		docID 		tf-idf score 	 list of positions
-			# print("POSTING: " + str(temp[0]) + " " + str(postings[int(temp[0])]))
 	return postings
 
 
@@ -94,10 +93,22 @@ def getBoolDocs(postings):
 	return finalSet
 
 
+def getPageRankScores():
+	pageRankScores = {}
+	file = open(pageRankFilePath + ".txt")
+	file.readline()
+	line = file.readline()
+	while line:
+		pageRankScores[line.split()[0]] = float(line.split()[1])
+		line = file.readline()
+	return pageRankScores
+
+
 if __name__ == '__main__':
 	docIDMapping = getDocIDMapping()
 	tokenLocations = getTokenLocations()
 	importantWords = getImportantWords()
+	pageRankScores = getPageRankScores()
 
 	print("___________Assignment 3 Search Engine_____________")
 	while True:
@@ -194,15 +205,23 @@ if __name__ == '__main__':
 
 			for docID in docScores:
 				docScores[docID] *= cosineScores[docID]**3
+
+			#PAGE RANKING SCORING################################
+			for docID in docScores:
+				if docID in pageRankScores:
+					docScores[docID] *= pageRankScores[docID]
+				else:
+					docScores[docID] *= 1/N
 					
 		queryTime = time.time()-startTime
 		###################################################################
+
 		if len(postings) > 0 and len(docSet) > 0:
 			print("Top 25 results:")
 			i = 0
 			for docID in sorted(docScores, key = lambda x : -docScores[x]):
 				if docID in docIDMapping:
-					print(docIDMapping[docID] + " |" + str(docScores[docID]))
+					print(docIDMapping[docID].split("#")[0])
 				i += 1
 				if i == 25:
 					break

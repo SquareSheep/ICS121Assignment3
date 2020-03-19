@@ -1,19 +1,10 @@
-from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-import nltk
-import io
 import os
 import json
 import math
+import nltk
 from simhash import Simhash
 
-"""
-Options
-- Positional
-- Cosine ranking
-- Page rank
-
-"""
 
 rootFolderName = "../DEV"
 
@@ -62,10 +53,6 @@ def	recordImportantWords(importantWords, pageSoup, numofFiles):
 	importantWords.append({})
 	for tagType in importantTags:
 		for tag in pageSoup(tagType):
-			# if tag.text in importantWords[numofFiles]:
-			# 	importantWords[numofFiles][tag.text] += 1
-			# else:
-			# 	importantWords[numofFiles][tag.text] = 1
 			for token in tokenizeText(tag.text):
 				if token in importantWords[numofFiles]:
 					importantWords[numofFiles][token] += 1
@@ -113,9 +100,6 @@ def isPageTooSimilar(pageTextString, pageHashes):
 
 def parseHTML(html):
 	'''Returns string of text given an HTML string'''
-
-	# Parse html and tokenize
-	# parser = lxml.etree.HTMLParser(encoding=encode)
 	soup = BeautifulSoup(html,'lxml')
 	for script in soup("script"):
 		script.decompose()
@@ -150,7 +134,6 @@ def writePartialIndexToFile(partialIndex, partialIndexNum):
 
 def getPartialIndexOffset(indexNumber):
 	'''Returns a dictionary of offsets for each word in the partial index'''
-	# offset[token] = (offset, length)
 	offsetFile = open(partialIndexOffsetFilePath+str(indexNumber)+".txt","r")
 	offset = {}
 	line = offsetFile.readline().split()
@@ -163,7 +146,6 @@ def getPartialIndexOffset(indexNumber):
 
 def createTemporaryIndex(numofindexes, uniqueTokens):
 	# Order: docID, frequency, tf-idf score
-	# | 0 1 2 |
 	partialIndexes = []
 	partialIndexOffsets = []
 
@@ -225,17 +207,13 @@ def createFinalIndex():
 
 
 if __name__ == '__main__':
-
-	# TEMPORARY
-	currFiles = 0
-
 	partialIndexNum = 0
 	numofFiles = 0
 	numofPostings = 0
 	partialIndex = {}
 	uniqueTokens = {}
 	pageHashes = set()
-	importantWords = [] # A list of dictionaries
+	importantWords = []
 	# importantWords[docID][token] = occurences (number of times this token was in <title>,<h1>,<h2>,<h3>,<b>)
 
 	subdirs = os.listdir(rootFolderName)
@@ -257,6 +235,7 @@ if __name__ == '__main__':
 			pageURL = fileJSON["url"]
 			pageSoup = BeautifulSoup(fileJSON["content"],'lxml')
 			pageTextString = getPageTextString(pageSoup)
+
 			if len(pageTextString) < 700 or len(pageTextString) > 70000000:
 				continue
 			try:
@@ -265,53 +244,45 @@ if __name__ == '__main__':
 			except:
 				continue
 			
-			# recordImportantWords(importantWords, pageSoup, numofFiles)
+			recordImportantWords(importantWords, pageSoup, numofFiles)
 
-			# tokens = {}
-			# for token in tokenizeText(pageTextString):
-			# 	if token not in tokens:
-			# 		tokens[token] = 1
-			# 	else:
-			# 		tokens[token] += 1
+			tokens = {}
+			for token in tokenizeText(pageTextString):
+				if token not in tokens:
+					tokens[token] = 1
+				else:
+					tokens[token] += 1
 
-			# 	if token not in uniqueTokens:
-			# 		uniqueTokens[token] = 1
-			# 	else:
-			# 		uniqueTokens[token] += 1
+				if token not in uniqueTokens:
+					uniqueTokens[token] = 1
+				else:
+					uniqueTokens[token] += 1
 
-			# for token in tokens:
-			# 	if token not in partialIndex:
-			# 		partialIndex[token] = []
+			for token in tokens:
+				if token not in partialIndex:
+					partialIndex[token] = []
 
-			# 	partialIndex[token].append((numofFiles, tokens[token]))
-			# 	numofPostings += 1
+				partialIndex[token].append((numofFiles, tokens[token]))
+				numofPostings += 1
 
-			# if numofPostings > 2000000: # 3000000
-			# 	writePartialIndexToFile(partialIndex, partialIndexNum)
-			# 	numofPostings = 0
-			# 	partialIndexNum += 1
-			# 	partialIndex = {}
+			if numofPostings > 2000000:
+				writePartialIndexToFile(partialIndex, partialIndexNum)
+				numofPostings = 0
+				partialIndexNum += 1
+				partialIndex = {}
 
 			docIDFile.write(pageURL + "\n")
 			numofFiles += 1
 
-		# 	currFiles += 1
-		# 	if currFiles == 10:
-		# 		currFiles = 0
-		# 		break
-		# if numofFiles > 100:
-		# 	break
 
-	# if numofPostings > 0:
-	# 	writePartialIndexToFile(partialIndex, partialIndexNum)
-	# 	numofPostings = 0
-	# 	partialIndexNum += 1
-	# 	partialIndex = {}
+	if numofPostings > 0:
+		writePartialIndexToFile(partialIndex, partialIndexNum)
+		numofPostings = 0
+		partialIndexNum += 1
+		partialIndex = {}
 
-	# writeImportantWordsToFile(importantWords)
+	writeImportantWordsToFile(importantWords)
 
-	# print("uniqueTokens:"+str(len(uniqueTokens)) + "\nnumofFiles:"+str(numofFiles))
+	createTemporaryIndex(partialIndexNum, uniqueTokens)
 
-	# createTemporaryIndex(partialIndexNum, uniqueTokens)
-
-	# createFinalIndex()
+	createFinalIndex()
