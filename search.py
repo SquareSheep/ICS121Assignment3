@@ -79,7 +79,6 @@ def getBoolDocs(postings):
 		docSets.append(set())
 		for docID in postings[token]:
 			docSets[i].add(docID)
-		#print(docSets[i])
 
 	finalSet = set()
 	for docID in docSets[0]:
@@ -113,19 +112,24 @@ if __name__ == '__main__':
 	print("___________Assignment 3 Search Engine_____________")
 	while True:
 		query = input('Enter a search, or just hit enter to exit: ')
-		query = query.lower()
+
+		# TIMER STARTS HERE ##########################
 		startTime = time.time()
+
+		query = query.lower()
+		
 		if query == "":
 			break
 
 		queryTokens = tokenizeText(query)
-		# print("QUERY: " + str(query) + " " + str(queryTokens))
 
+		# Count the number of stop words in the query
 		numofStopWords = 0
 		for token in queryTokens:
 			if token in stopWords:
 				numofStopWords += 1
 
+		# If the query is mostly non-stopwords, delete all stopwords
 		if numofStopWords < len(queryTokens)*0.7 and numofStopWords > 0:
 			i = 0
 			while i < len(queryTokens):
@@ -135,9 +139,11 @@ if __name__ == '__main__':
 				i += 1
 
 		postings = {}
+
+		# If the query is all stopwords, lower the number of postings retrieved for each token
 		if numofStopWords == len(queryTokens):
 			for token in queryTokens:
-				postings[token] = (getPostings(token, tokenLocations,5000))
+				postings[token] = (getPostings(token, tokenLocations,5000)) # Only 5000 postings per token if they are all stopwords
 		else:
 			for token in queryTokens:
 				postings[token] = getPostings(token, tokenLocations, 50000 - min(len(queryTokens),10)*2000)
@@ -145,7 +151,8 @@ if __name__ == '__main__':
 		if len(postings) > 0:
 			docSet = getBoolDocs(postings)
 
-		# MAIN SECTION ####################################################
+
+		# SCORE CALCUATIONS ####################################################
 		if len(postings) > 0:
 
 			# TF-IDF SCORING #############################
@@ -156,7 +163,7 @@ if __name__ == '__main__':
 				TFd = 1
 				queryIDFScores[token] = TFd*math.log(N/DFt,3)
 
-
+			# For every document, add up the tf-idf scores for each query token in the document
 			docScores = {}
 			for docID in docSet:
 				docScores[docID] = 0
@@ -166,11 +173,11 @@ if __name__ == '__main__':
 
 
 			# IMPORTANT WORD SCORING #####################
+			# For every word in a document that is important, add to the document's score
 			for docID in docScores:
 				for token in queryTokens:
 					if token in importantWords[docID]:
-						docScores[docID] *= (importantWords[docID][token]+1)*25
-						# print(token)
+						docScores[docID] *= (importantWords[docID][token]+1)*5
 
 
 			# COSINE SCORING #############################
@@ -203,6 +210,7 @@ if __name__ == '__main__':
 			for docID in docSet:
 				cosineScores[docID] = DIJQJ[docID] / math.sqrt(DIJ2[docID]*QJ2)
 
+			# Multiply the document scores by their cosine scores
 			for docID in docScores:
 				docScores[docID] *= cosineScores[docID]**3
 
@@ -212,10 +220,11 @@ if __name__ == '__main__':
 					docScores[docID] *= pageRankScores[docID]
 				else:
 					docScores[docID] *= 1/N
-					
-		queryTime = time.time()-startTime
-		###################################################################
 
+
+		# TIMER ENDS HERE ###################################
+		queryTime = time.time()-startTime
+		
 		if len(postings) > 0 and len(docSet) > 0:
 			print("Top 25 results:")
 			i = 0

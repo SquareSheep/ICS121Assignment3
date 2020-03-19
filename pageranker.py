@@ -27,6 +27,8 @@ def getDocURLMapping():
 
 
 if __name__ == '__main__':
+	# Makes a graph with document links and calculates the documents' rankings
+
 	docURLMapping = getDocURLMapping()
 	docIDMapping = getDocIDMapping()
 

@@ -145,7 +145,6 @@ def getPartialIndexOffset(indexNumber):
 
 
 def createTemporaryIndex(numofindexes, uniqueTokens):
-	# Order: docID, frequency, tf-idf score
 	partialIndexes = []
 	partialIndexOffsets = []
 
@@ -213,8 +212,7 @@ if __name__ == '__main__':
 	partialIndex = {}
 	uniqueTokens = {}
 	pageHashes = set()
-	importantWords = []
-	# importantWords[docID][token] = occurences (number of times this token was in <title>,<h1>,<h2>,<h3>,<b>)
+	importantWords = [] # importantWords[docID][token] = occurences (number of times this token was in <title>,<h1>,<h2>,<h3>,<b>)
 
 	subdirs = os.listdir(rootFolderName)
 
@@ -274,7 +272,6 @@ if __name__ == '__main__':
 			docIDFile.write(pageURL + "\n")
 			numofFiles += 1
 
-
 	if numofPostings > 0:
 		writePartialIndexToFile(partialIndex, partialIndexNum)
 		numofPostings = 0
@@ -282,6 +279,8 @@ if __name__ == '__main__':
 		partialIndex = {}
 
 	writeImportantWordsToFile(importantWords)
+
+	print("uniqueTokens:"+str(len(uniqueTokens)) + "\nnumofFiles:"+str(numofFiles))
 
 	createTemporaryIndex(partialIndexNum, uniqueTokens)
 
